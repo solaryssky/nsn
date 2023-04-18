@@ -1,4 +1,5 @@
-# nsn
+###Nokia NSN reader for Open MSS (TTTCOF and TTSCOF status file).###
+
 ###TTSCOF и TTTCOF - информация о загрузке файлов между MSS и системой постобработки###
 
 Первая запись в файлах зарезервирована для внутреннего использования. 
