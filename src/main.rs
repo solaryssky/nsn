@@ -1,4 +1,7 @@
+//example run: cargo run -- print 127.0.0.1 ftpuser 123ASDasd ftpdir
 extern crate ftp;
+use colored::Colorize;
+
 use std::env;
 use std::fs;
 use std::fs::File;
@@ -95,31 +98,29 @@ fn read_as_bin2hex(handle: &mut impl Read, handle_tts: &mut impl Read, _fpath: &
         let _year_2_tts = &_hex_tts[12..14];
         let _storing_status_tts = &_hex_tts[16..18];
         
-        let _file_state_encr = String::from(" ");
-         match _file_state_tts.as_str(){
-            "00"=>"OPEN",
-            "01"=>"FULL",
-            "02"=>"TRANSFERED",
-            "03"=>"WAITING",
-            "04"=>"COMPRESSING",
-            "05"=>"UNUSEABLE",
-            _ => "UNKNOWN",
+        //расшифровка статусов
+        let _file_state_encr = match _file_state_tts{
+            "00" => "OPEN".red(),
+            "01" => "FULL".green(),
+            "02" => "TRANSFERED".blue(),
+            "03" => "WAITING".yellow(),
+            "04" => "COMPRESSING".white(),
+            "05" => "UNUSEABLE".black(),
+            _ => "UNKNOWN".black(),
         };
           
-         println!("CF{}{}.DAT {}:{}:{} {}.{}.{}{} <-TTC | TTS-> {} {}:{}:{} {}.{}.{}{} {}",
-                  _zero,_counter,_hours,_min,_sec,_day,_month,_year_1,_year_2,_file_state_tts,_hours_tts,_min_tts,_sec_tts,_day_tts,_month_tts,_year_1_tts,_year_2_tts,_storing_status_tts);
+         println!("CF{}{}.DAT {}:{}:{} {}.{}.{}{} <-TTC | TTS-> {} {} {}:{}:{} {}.{}.{}{} {}",
+                  _zero,_counter,_hours,_min,_sec,_day,_month,_year_1,_year_2,_file_state_tts,_file_state_encr,_hours_tts,_min_tts,_sec_tts,_day_tts,_month_tts,_year_1_tts,_year_2_tts,_storing_status_tts);
     
     if let Err(e) = writeln!(&mut file_ttc, "CF{}{}.DAT {}:{}:{} {}.{}.{}{}",_zero,_counter,_hours,_min,_sec,_day,_month,_year_1,_year_2) {
         eprintln!("Couldn't write to file: {}", e);
     }
+    
+    let _file_state_encr222 = _file_state_encr.replace(|c: char| !c.is_ascii(), "");
 
-    if let Err(e) = writeln!(&mut file_tts, "CF{}{}.DAT {}:{}:{} {}.{}.{}{}",_zero,_counter,_hours,_min,_sec,_day,_month,_year_1,_year_2) {
+    if let Err(e) = writeln!(&mut file_tts, "CF{}{}.DAT {} {} {}:{}:{} {}.{}.{}{} {}",_zero,_counter,_file_state_tts,_file_state_encr222,_hours_tts,_min_tts,_sec_tts,_day_tts,_month_tts,_year_1_tts,_year_2_tts,_storing_status_tts) {
         eprintln!("Couldn't write to file: {}", e);
     }
-
-    
-
-
 
     }
     else if _print == "hex"{
@@ -135,9 +136,21 @@ fn read_as_bin2hex(handle: &mut impl Read, handle_tts: &mut impl Read, _fpath: &
 }
 
 fn main() {
-    let three_arg = env::args().skip(2).next();
+    let two_args = env::args().skip(2).next();
+    let fallback_2 = "".to_owned();
+    let _ip = two_args.unwrap_or(fallback_2);
+    
+    let three_args = env::args().skip(3).next();
     let fallback_3 = "".to_owned();
-    let _ip = three_arg.unwrap_or(fallback_3);
+    let _user = three_args.unwrap_or(fallback_3);
+
+    let four_args = env::args().skip(4).next();
+    let fallback_4 = "".to_owned();
+    let _pass = four_args.unwrap_or(fallback_4);
+
+    let five_args = env::args().skip(5).next();
+    let fallback_5 = "".to_owned();
+    let _srcdir = five_args.unwrap_or(fallback_5);
    
     let _base_dir = String::from("/tmp/nsn/");
     let _result_dir = String::from("/result");
@@ -149,8 +162,8 @@ fn main() {
 
     //get ftp result files
     let mut ftp_stream = FtpStream::connect(_ip_port).unwrap();
-    let _ = ftp_stream.login("", "").unwrap();
-    let _ = ftp_stream.cwd("ftpdir").unwrap();
+    let _ = ftp_stream.login(&_user, &_pass).unwrap();
+    let _ = ftp_stream.cwd(&_srcdir).unwrap();
     
     let remote_file_tts = ftp_stream.simple_retr("TTSCOF00.IMG").unwrap();
     let mut file_tts = File::create(_cp_full_path.to_owned() + "/TTSCOF00.IMG").unwrap();
@@ -171,16 +184,6 @@ fn main() {
 
     let _result = read_as_bin2hex(&mut file, &mut file_s, &_cp_full_path);
 }
-
-
-
-
-
-
-
-
-
-
 
 
 
