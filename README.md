@@ -1,4 +1,4 @@
-###Nokia NSN reader for Open MSS (TTTCOF and TTSCOF status file).###
+*** 	`#0969DA` Nokia NSN reader for Open MSS (TTTCOF and TTSCOF status file).***
 
 ###TTSCOF и TTTCOF - информация о загрузке файлов между MSS и системой постобработки###
 
