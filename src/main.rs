@@ -149,7 +149,7 @@ fn main() {
 
     //get ftp result files
     let mut ftp_stream = FtpStream::connect(_ip_port).unwrap();
-    let _ = ftp_stream.login("ftpuser", "123ASDasd").unwrap();
+    let _ = ftp_stream.login("", "").unwrap();
     let _ = ftp_stream.cwd("ftpdir").unwrap();
     
     let remote_file_tts = ftp_stream.simple_retr("TTSCOF00.IMG").unwrap();
