@@ -1,0 +1,17 @@
+###########################################################################
+# libssh2 installation details
+###########################################################################
+
+prefix=/home/dima/dev/Rust/nsn/target/x86_64-unknown-linux-musl/release/build/libssh2-sys-5b604e6dc2bae6ab/out
+exec_prefix=
+libdir=/home/dima/dev/Rust/nsn/target/x86_64-unknown-linux-musl/release/build/libssh2-sys-5b604e6dc2bae6ab/out/lib
+includedir=/home/dima/dev/Rust/nsn/target/x86_64-unknown-linux-musl/release/build/libssh2-sys-5b604e6dc2bae6ab/out/include
+
+Name: libssh2
+URL: https://www.libssh2.org/
+Description: Library for SSH-based communication
+Version: 1.10.1_DEV
+Requires.private: 
+Libs: -L${libdir} -lssh2 
+Libs.private: 
+Cflags: -I${includedir}

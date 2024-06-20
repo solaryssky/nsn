@@ -1,0 +1,27 @@
+appenders:
+  to_stdout:
+    kind: console
+    encoder:
+      pattern: "{h({d(%Y-%m-%d %H:%M:%S)} - {l}: {m}{n})}"
+  to_file:
+    kind: rolling_file
+    append: true
+    path: "log/logs.log"
+    encoder:
+      pattern: "{d(%Y-%m-%d %H:%M:%S)} - {h({l})}: {m}{n}"
+    policy:
+      kind: compound
+      trigger:
+        kind: size
+        limit: 100mb
+      roller:
+        kind: fixed_window
+        base: 1
+        count: 100
+        pattern: "log/logs{}.log"
+root:
+  #level: debug
+  level: info
+  appenders:
+    - to_stdout
+    - to_file

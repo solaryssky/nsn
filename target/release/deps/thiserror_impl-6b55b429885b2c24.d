@@ -1,0 +1,12 @@
+/home/dima/dev/Rust/nsn/target/release/deps/libthiserror_impl-6b55b429885b2c24.so: /home/dima/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.40/src/lib.rs /home/dima/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.40/src/ast.rs /home/dima/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.40/src/attr.rs /home/dima/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.40/src/expand.rs /home/dima/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.40/src/fmt.rs /home/dima/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.40/src/generics.rs /home/dima/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.40/src/prop.rs /home/dima/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.40/src/valid.rs
+
+/home/dima/dev/Rust/nsn/target/release/deps/thiserror_impl-6b55b429885b2c24.d: /home/dima/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.40/src/lib.rs /home/dima/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.40/src/ast.rs /home/dima/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.40/src/attr.rs /home/dima/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.40/src/expand.rs /home/dima/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.40/src/fmt.rs /home/dima/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.40/src/generics.rs /home/dima/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.40/src/prop.rs /home/dima/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.40/src/valid.rs
+
+/home/dima/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.40/src/lib.rs:
+/home/dima/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.40/src/ast.rs:
+/home/dima/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.40/src/attr.rs:
+/home/dima/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.40/src/expand.rs:
+/home/dima/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.40/src/fmt.rs:
+/home/dima/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.40/src/generics.rs:
+/home/dima/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.40/src/prop.rs:
+/home/dima/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.40/src/valid.rs:
