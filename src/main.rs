@@ -1,289 +1,166 @@
-//example run: cargo run -- print sftp 127.0.0.1 22 user pass /home/dima/dev/Rust/nsn/example/ -1
-use colored::Colorize;
-use chrono::{NaiveDateTime, Duration, Local};
+//build command: 
+//example run: cargo run -- print sftp 127.0.0.1 22 'USER' 'PASS' /path/path-000 -1
+//example run: cargo run -- print sftp localhost 22 'USER' 'PASS' /path/to/example/ -1
+//nsn print sftp 127.0.0.1 22 'USER' 'PASS' /path/path-000 -1
+
 use std::env;
 use std::fs;
-use std::fs::OpenOptions;
-use std::io::prelude::Write;
-use std::io::{Read, Result};
 use log::info;
 use log4rs;
 use nsn::ftp_download;
 use nsn::sftp_download;
+use nsn::read_as_bin2hex;
+use uuid::Uuid;
+use whoami::fallible;
 
-
-
-
-//перевод в двоичный
-fn convert_to_binary_from_hex(hex: &str) -> String {
-    hex[0..].chars().map(to_binary).collect()
-}
-
-fn to_binary(c: char) -> &'static str {
-    match c {
-        '0' => "0000",
-        '1' => "0001",
-        '2' => "0010",
-        '3' => "0011",
-        '4' => "0100",
-        '5' => "0101",
-        '6' => "0110",
-        '7' => "0111",
-        '8' => "1000",
-        '9' => "1001",
-        'A' => "1010",
-        'B' => "1011",
-        'C' => "1100",
-        'D' => "1101",
-        'E' => "1110",
-        'F' => "1111",
-        _ => "",
-    }
-}
-
-//рабочая функция
-fn read_as_bin2hex(handle: &mut impl Read, handle_tts: &mut impl Read, _fpath: &String , num_edit_str: &String) -> Result<()> {
-
-    let num_edit: i16 = num_edit_str.parse().expect("Block number not integer!");
-        
-    //размер байт для TTC
-    const READ_MAX_LEN: usize = 7;
-    //размер байт для TTS
-    const READ_MAX_LEN_TTS: usize = 9;
-    
-    //иницилизируем статические массивы
-    let mut bin = [0; READ_MAX_LEN];
-    let mut bin_tts = [0; READ_MAX_LEN_TTS];
-    
-    let first_arg = env::args().skip(1).next();
-    let fallback = "".to_owned();
-    let _print = first_arg.unwrap_or(fallback);
-
-
-    
-    let mut _counter: i16 = 0;
-    
-    let _write_tts_print_img = _fpath.clone() + "/TTSCOF00.IMG";
-    let _write_tts_print_txt = _fpath.clone() + "/TTSCOF00.txt";
-
-    let _write_new_ttc = _fpath.clone() + "/new_TTTCOF00.IMG";
-
-    let _write_ttc_print_img = _fpath.clone() + "/TTTCOF00.IMG";
-    let _write_ttc_print_txt = _fpath.clone() + "/TTTCOF00.txt";
-
-
-    let rem_file_ttc = std::path::Path::new(&_write_ttc_print_txt).exists();
-    let rem_file_tts = std::path::Path::new(&_write_tts_print_txt).exists();
-    let rem_file_new_ttc = std::path::Path::new(&_write_new_ttc).exists();
-    
-    if rem_file_ttc{
-        let _write_ttc_print_txt_rm = _write_ttc_print_txt.clone();
-        fs::remove_file(_write_ttc_print_txt_rm).expect("Unable delete file TTTCOF00.txt");
-    }
-
-   if rem_file_tts{
-        let _write_tts_print_txt_rm = _write_tts_print_txt.clone();
-        fs::remove_file(_write_tts_print_txt_rm).expect("Unable delete file TTSCOF00.txt");
-    }
-
-    if rem_file_new_ttc{
-        let _write_new_ttc_rm = _write_new_ttc.clone();
-        fs::remove_file(_write_new_ttc_rm).expect("Unable delete file new_TTTCOF00.IMG");
-    }
-
-
-    let mut file_ttc = OpenOptions::new().create_new(true).write(true).append(true).open(_write_ttc_print_txt).unwrap();
-    let mut file_tts = OpenOptions::new().create_new(true).write(true).append(true).open(_write_tts_print_txt).unwrap();
-    let mut file_new_ttc = OpenOptions::new().create_new(true).write(true).append(true).open(_write_new_ttc).unwrap();
-    
-    
-
-    loop {
-        let bytes_read = handle.take(READ_MAX_LEN as u64).read(&mut bin)?;
-        let bytes_read_tts = handle_tts.take(READ_MAX_LEN_TTS as u64).read(&mut bin_tts)?;
-
-        if bytes_read == 0 { 
-            break; 
-        } // EOF
-
-        let _hex = bin[..bytes_read].iter().map(|byte|format!("{byte:02x?}")).collect::<String>();        
-        let _hex_tts = bin_tts[..bytes_read_tts].iter().map(|byte|format!("{byte:02x?}")).collect::<String>();                     
-
-    
-        let _str: String = _counter.to_string();
-        let lenght = _str.len();    
-        let mut _zero = String::from("000");      
-        
-        if lenght == 2{
-            _zero = String::from("00");
-        }
-        else if lenght == 3{
-            _zero = String::from("0");
-        }
-        else if lenght == 4{
-            _zero = String::from("");
-        }
-    
-    
-    if _print == "print"{
-        let _sec_ttc = &_hex[0..2];
-        let _min_ttc = &_hex[2..4];
-        let _hours_ttc = &_hex[4..6];
-        let _day_ttc = &_hex[6..8];
-        let _month_ttc = &_hex[8..10];
-        let _year_1_ttc = &_hex[12..14];
-        let _year_2_ttc = &_hex[10..12];
-        let _datetime_ttc = [&_hex[0..2], &_hex[2..4], &_hex[4..6], &_hex[6..8], &_hex[8..10], &_hex[10..12], &_hex[12..14]].concat();
-        
-        let _file_state_tts = &_hex_tts[0..2];
-        let _sec_tts = &_hex_tts[2..4];
-        let _min_tts = &_hex_tts[4..6];
-        let _hours_tts = &_hex_tts[6..8];
-        let _day_tts = &_hex_tts[8..10];
-        let _month_tts = &_hex_tts[10..12];
-        let _year_1_tts = &_hex_tts[14..16];
-        let _year_2_tts = &_hex_tts[12..14];
-        let _storing_status_tts = &_hex_tts[16..18];
-        let _datetime_tts = [&_hex_tts[14..16], &_hex_tts[12..14], &_hex_tts[10..12], &_hex_tts[8..10], &_hex_tts[6..8], &_hex_tts[4..6], &_hex_tts[2..4]].concat();
-        
-        //расшифровка статусов
-        let _file_state_encr = match _file_state_tts{
-            "00" => "OPEN       ".red(),
-            "01" => "FULL       ".green(),
-            "02" => "TRANSFERED ".blue(),
-            "03" => "WAITING    ".yellow(),
-            "04" => "COMPRESSING".white(),
-            "05" => "UNUSEABLE  ".black(),
-             _   => "UNKNOWN    ".black(),
-        };
-    //если статус FULL
-    if _file_state_tts == "01"{            
-            let naive_datetime = NaiveDateTime::parse_from_str(&_datetime_tts, "%Y%m%d%H%M%S").unwrap();
-            let add_naive_datetime = naive_datetime + Duration::seconds(60);
-            let _string_datetime_tts = add_naive_datetime.to_string();
-            let _new_datetime_ttc = [&_string_datetime_tts[17..19], &_string_datetime_tts[14..16], &_string_datetime_tts[11..13], &_string_datetime_tts[8..10], &_string_datetime_tts[5..7], &_string_datetime_tts[2..4], &_string_datetime_tts[0..2]].concat();
-    //печать на экран в соответствии TTC-TTS записей
-        println!("CF{}{}.DAT {}{}-{}-{} {}:{}:{} <-TTC | TTS-> {} {} {}{}-{}-{} {}:{}:{} {}",
-                  _zero,_counter,_year_1_ttc,_year_2_ttc,_day_ttc,_month_ttc,_hours_ttc,_min_ttc,_sec_ttc, _file_state_tts,_file_state_encr,_year_1_tts,_year_2_tts,_day_tts,_month_tts,_hours_tts,_min_tts,_sec_tts,_storing_status_tts);
-
-    //записываем в новый TTC-файл измененную запись с новым временем
-       info!("CF{}{}.DAT: old time from {} is {}, new time for {} is {} in Nokia format: {}",  _zero,_counter, &_datetime_tts, _write_tts_print_img, _write_ttc_print_img, add_naive_datetime, _new_datetime_ttc);     
-       let new_time_ttc_dec = hex::decode(_new_datetime_ttc).expect("Decoding failed new record");    
-       let _ = file_new_ttc.write(&new_time_ttc_dec);  
-         
-     }
-    else{
-        println!("CF{}{}.DAT {}{}-{}-{} {}:{}:{} <-TTC | TTS-> {} {} {}{}-{}-{} {}:{}:{} {}",
-         _zero,_counter,_year_1_ttc,_year_2_ttc,_day_ttc,_month_ttc,_hours_ttc,_min_ttc,_sec_ttc, _file_state_tts,_file_state_encr,_year_1_tts,_year_2_tts,_day_tts,_month_tts,_hours_tts,_min_tts,_sec_tts,_storing_status_tts);
-    //записываем в новый TTC-файл не измененные записи
-      let src_time_ttc_dec = hex::decode(_datetime_ttc).expect("Decoding failed old record");    
-      let _ = file_new_ttc.write(&src_time_ttc_dec);
-    }
-
-    //блок обработки времени в TTC-файле вручную
-    if num_edit == _counter && num_edit != -1{
-    
-        let ttc_manual_time = Local::now() + Duration::seconds(60);
-        let ttc_manual_time_str = ttc_manual_time.to_string();
-        let ttc_manual_nsn = [&ttc_manual_time_str[8..10], &ttc_manual_time_str[0..2] , &ttc_manual_time_str[2..4]].concat();
-       println!("{} {} {:?} ---------", num_edit, ttc_manual_time_str, ttc_manual_nsn);
-    }
-    
-    
-    //записываем декодированный TTС в текстовый файл
-    if let Err(e) = writeln!(&mut file_ttc, "CF{}{}.DAT {}:{}:{} {}.{}.{}{}",_zero,_counter,_hours_ttc,_min_ttc,_sec_ttc,_day_ttc,_month_ttc,_year_1_ttc,_year_2_ttc){
-        eprintln!("Couldn't write to file: {}", e);
-    }
-    //убрали не ascii символы перед записью в текстовый файл TTS
-    let _file_state_encr = _file_state_encr.replace(|c: char| !c.is_ascii(), "");
-    
-    //записываем декодированный TTS в текстовый файл
-    if let Err(e) = writeln!(&mut file_tts, "CF{}{}.DAT {} {} {}:{}:{} {}.{}.{}{} {}",_zero,_counter,_file_state_tts,_file_state_encr,_hours_tts,_min_tts,_sec_tts,_day_tts,_month_tts,_year_1_tts,_year_2_tts,_storing_status_tts) {
-        eprintln!("Couldn't write to file: {}", e);
-    }
-
-    }
-    //если стоит ключ hex в командной строке
-    else if _print == "hex"{                    
-         println!("CF{}{}.DAT {} <-TTC | TTS-> {}",_zero, _counter, _hex, _hex_tts);
-    }
-    else if _print == "bin"{
-        let binary_value_ttc = convert_to_binary_from_hex(&_hex);
-        let binary_value_tts = convert_to_binary_from_hex(&_hex_tts);
-         println!("CF{}{}.DAT {} <-TTC | TTS-> {}",_zero, _counter, binary_value_ttc, binary_value_tts);
-    }
-
-    else{
-         println!("parameters not specified");
-    }
-     
-    _counter += 1;   
-    }  
-    Ok(())
-}
 
 fn main() {
-    log4rs::init_file("logging_config.yaml", Default::default()).unwrap();
 
-    let fallback = "".to_owned();
-    let three_args = env::args().skip(3).next();
-    let _ip = three_args.unwrap_or(fallback.clone());    
+    let hostname = fallible::hostname().unwrap();
 
-    let four_args = env::args().skip(4).next();
-    let host_port = four_args.unwrap_or(fallback.clone());
+    let _guard = sentry::init(("https://url.ru/1596", 
+    sentry::ClientOptions {
+            release: sentry::release_name!(),
+            traces_sample_rate: 0.2, //send 20% of transaction to sentry
+            ..Default::default()
+        }));
+
+        sentry::configure_scope(|scope| {
+            scope.set_user(Some(sentry::User {
+                id: Some(hostname.clone()),
+                email: Some("dima@yandex.ru".to_owned()),
+                username: Some(whoami::username()),                
+                ..Default::default()
+            }));
+           scope.set_tag("Nokia downloader", &hostname);
+        });
     
-    let five_args = env::args().skip(5).next();
-    let _user = five_args.unwrap_or(fallback.clone());
+        let tx_ctx = sentry::TransactionContext::new(&hostname,"main transaction",);
+        let transaction = sentry::start_transaction(tx_ctx);
+                    sentry::capture_message("Im start!", sentry::Level::Info);
+                    
 
-    let sixth_args = env::args().skip(6).next();
-    let _pass = sixth_args.unwrap_or(fallback.clone());
-
-    let seven_args = env::args().skip(7).next();
-    let _srcdir = seven_args.unwrap_or(fallback.clone());
-
-    let eight_args = env::args().skip(8).next();
-    let _edit_block = eight_args.unwrap_or(fallback.clone());
-   
-    let base_dir = String::from("/tmp/nsn/");
-    let result_dir = String::from("/result");
-    let full_path = base_dir + &_ip + &result_dir;
+    //ip-host args key  
+    let _ip = env::args().nth(3).unwrap_or_else(|| {
+        eprintln!("Error: IP not set in arguments key");
+        std::process::exit(1);
+    }
+    );
+    let work_dir = String::from("/path/nsn");
+    let full_path = work_dir.to_owned() + "/result/" + &_ip;
     let cp_full_path = full_path.clone();
+
+    
+    log4rs::init_file(work_dir + "/logging_config.yaml", Default::default()).expect("not found config file for log4rs");
+
+    //let fallback = "".to_owned();
+
+
+    //port args key
+    //let four_args = env::args().skip(4).next();
+    //let host_port = four_args.unwrap_or(fallback.clone());
+    let host_port = env::args().nth(4).unwrap_or_else(|| {
+        eprintln!("Error: Host and port not set in arguments key");
+        std::process::exit(1);
+    }
+    );
+    
+    //user args key
+    //let five_args = env::args().skip(5).next();
+    //let _user = five_args.unwrap_or(fallback.clone());
+    let _user = env::args().nth(5).unwrap_or_else(|| {
+        eprintln!("Error: User login not set in arguments key");
+        std::process::exit(1);
+    }
+    );
+    
+
+    //password args key
+    //let sixth_args = env::args().skip(6).next();
+    //let _pass = sixth_args.unwrap_or(fallback.clone());
+    let _pass = env::args().nth(6).unwrap_or_else(|| {
+        eprintln!("Error: User password not set in arguments key");
+        std::process::exit(1);
+    }
+    );
+
+    //source directory for file args key
+    //let seven_args = env::args().skip(7).next();
+    //let _srcdir = seven_args.unwrap_or(fallback.clone());
+    let _srcdir = env::args().nth(7).unwrap_or_else(|| {
+        eprintln!("Error: Source directory not set in arguments key");
+        std::process::exit(1);
+    }
+    );
+
+
+
+    //edit mode args key (edit block number or disable key "-1")
+    //let eight_args = env::args().skip(8).next();
+    //let _edit_block = eight_args.unwrap_or(fallback.clone());
+    let _edit_block = env::args().nth(8).unwrap_or_else(|| {
+        eprintln!("Error: Edit mode not set in arguments key (set edit block number or use disable key '-1')");
+        std::process::exit(1);
+    }
+    );
 
     fs::create_dir_all(full_path).expect("Unable create directory");
 
-    let two_args = env::args().skip(2).next();
-    let protocol = two_args.unwrap_or(fallback.clone());
+    //type protocol args key (ftp/sftp)
+   // let two_args = env::args().skip(2).next();
+    //let protocol = two_args.unwrap_or(fallback.clone());
+
+    let protocol = env::args().nth(2).unwrap_or_else(|| {
+        eprintln!("Error: Not set protocol: ftp or sftp in key");
+        std::process::exit(1);
+    }
+    );
 
     let ip_port = _ip + ":" + &host_port;
+    let sentry_event_id:Uuid = sentry::last_event_id().expect("Cannot get event_id from Sentry");
 
     //get ftp result files
+    let span_ftp = transaction.start_child("start ftp/sftp", &ip_port);
  if protocol == "ftp"{
-        ftp_download(&ip_port, &_user, &_pass, &_srcdir, &cp_full_path);
+        ftp_download(&ip_port, &_user, &_pass, &_srcdir, &cp_full_path, &sentry_event_id, &span_ftp.get_span_id().to_string());
     }
     else{
-        sftp_download(&ip_port, &_user, &_pass, &_srcdir, &cp_full_path);
+        sftp_download(&ip_port, &_user, &_pass, &_srcdir, &cp_full_path, &sentry_event_id, &span_ftp.get_span_id().to_string());
     }
+    span_ftp.finish();
 
-
-    
     let _read_file = cp_full_path.to_owned() + "/TTTCOF00.IMG";
     let _read_file_tts = cp_full_path.to_owned() + "/TTSCOF00.IMG";
     
-    info!("Read file {}", _read_file);
+    let span_read_ttc = transaction.start_child("read file", "TTTCOF00.IMG");
+    info!("{}: read file {} {} {}",&ip_port, _read_file, &sentry_event_id, &span_read_ttc.get_span_id().to_string());
     let mut file = std::fs::File::open(_read_file).expect("Unable to open file");
-    info!("Read file {}", _read_file_tts);
-    let mut file_s = std::fs::File::open(_read_file_tts).expect("Unable to open file");
+    span_read_ttc.finish();
 
-    let _result = read_as_bin2hex(&mut file, &mut file_s, &cp_full_path, &_edit_block);
+    let span_read_tts = transaction.start_child("read file", "TTSCOF00.IMG");
+    info!("{}: read file {} {} {}",&ip_port, _read_file_tts, &sentry_event_id, &span_read_tts.get_span_id().to_string());
+    let mut file_s = std::fs::File::open(_read_file_tts).expect("Unable to open file");
+    span_read_tts.finish();
+
+    let span_result = transaction.start_child("result", "execute read_as_bin2hex");
+    let spanid_result = &span_result.get_span_id().to_string();
+    let _result = read_as_bin2hex(&ip_port, &mut file, &mut file_s, &cp_full_path, &_edit_block, &sentry_event_id, &spanid_result);
+    span_result.finish();
+    info!("{}: end of work {}",&ip_port, &sentry_event_id);
+    transaction.finish();
 }
 
 
 
 
+
+//UNIT TEST BLOCK
+
 #[test]
+///тестовая функция (читает только файл TTTCOF00.IMG в директории /tmp/)
+///пример cargo test -- --nocapture
+
 fn test_with_file() {
-    ///тестовая функция (читает только файл TTTCOF00.IMG в директории /tmp/)
-   ///пример cargo test -- --nocapture
 fn test_bin2hex(handle: &mut impl Read) -> Result<()> {
     const READ_MAX_LEN: usize = 7;
     let mut bin = [0; READ_MAX_LEN];
@@ -302,4 +179,109 @@ fn test_bin2hex(handle: &mut impl Read) -> Result<()> {
     let _result = test_bin2hex(&mut file);
 
     assert!(_result.is_ok())
+}
+
+//test for convert_to_binary_from_hex и to_binary
+#[cfg(test)]
+mod tests {
+    use super::*;
+ 
+    #[test]
+    fn test_to_binary() {
+        assert_eq!(to_binary('0'), "0000");
+        assert_eq!(to_binary('1'), "0001");
+        assert_eq!(to_binary('A'), "1010");
+        assert_eq!(to_binary('F'), "1111");
+        assert_eq!(to_binary('G'), ""); // Неверный символ
+    }
+ 
+    #[test]
+    fn test_convert_to_binary_from_hex() {
+        assert_eq!(convert_to_binary_from_hex("0"), "0000");
+        assert_eq!(convert_to_binary_from_hex("1A"), "00011010");
+        assert_eq!(convert_to_binary_from_hex("FF"), "11111111");
+        assert_eq!(convert_to_binary_from_hex("1F3"), "000111110011");
+    }
+}
+
+//тест для проверки записи и чтения файлов
+ 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::{Cursor, Seek, SeekFrom};
+    use tempfile::NamedTempFile;
+ 
+    #[test]
+    fn test_read_as_bin2hex_with_files() {
+        // Создаем временные файлы для тестирования
+        let mut ttc_file = NamedTempFile::new().unwrap();
+        let mut tts_file = NamedTempFile::new().unwrap();
+ 
+        // Записываем тестовые данные в файлы
+        let ttc_data = vec![0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE];
+        let tts_data = vec![0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99];
+ 
+        ttc_file.write_all(&ttc_data).unwrap();
+        tts_file.write_all(&tts_data).unwrap();
+ 
+        // Перемещаем указатель в начало файлов
+        ttc_file.seek(SeekFrom::Start(0)).unwrap();
+        tts_file.seek(SeekFrom::Start(0)).unwrap();
+ 
+        // Вызываем тестируемую функцию
+        let result = read_as_bin2hex(
+            "127.0.0.1:8080",
+            &mut ttc_file,
+            &mut tts_file,
+            &"/tmp/nsn/127.0.0.1/result".to_string(),
+            &"0".to_string(),
+        );
+ 
+        // Проверяем, что функция завершилась успешно
+        assert!(result.is_ok());
+    }
+}
+
+//тест с моком для базы данных
+ 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use mockall::predicate::*;
+    use mockall::*;
+ 
+    mock! {
+        pub DbClient {}
+        impl Client for DbClient {
+            fn execute(&mut self, query: &str, params: &[&(dyn ToSql + Sync)]) -> Result<u64, postgres::Error>;
+        }
+    }
+ 
+    #[test]
+    fn test_database_insert() {
+        let mut mock_db = MockDbClient::new();
+ 
+        // Настраиваем мок для ожидаемого вызова
+        mock_db
+            .expect_execute()
+            .with(
+                eq("INSERT INTO status (file, ttc_date, tts_status_code, tts_status_info, tts_date, tts_storing_status, uuid, ip_port) values ($1, $2, $3, $4, $5, $6, $7, $8)"),
+                always(),
+            )
+            .times(1)
+            .returning(|_, _| Ok(1));
+ 
+        // Вызываем тестируемую функцию с моком базы данных
+        let result = read_as_bin2hex(
+            "127.0.0.1:8080",
+            &mut Cursor::new(vec![0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE]),
+            &mut Cursor::new(vec![0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99]),
+            &"/tmp/nsn/127.0.0.1/result".to_string(),
+            &"0".to_string(),
+        );
+ 
+        // Проверяем, что функция завершилась успешно
+        assert!(result.is_ok());
+    }
 }
