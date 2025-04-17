@@ -12,10 +12,30 @@ use chrono::{NaiveDateTime, Duration, Local};
 use std::env;
 use std::fs;
 use postgres::{Client, NoTls};
+use md5::{Md5, Digest}; 
+
+
+//function for check md5sum
+pub fn calculate_md5(file_path: &str) -> std::io::Result<String> {
+
+    let mut file = File::open(file_path)?;
+    let mut hasher = Md5::new();
+    let mut buffer = [0; 4096]; // Буфер для чтения файла по частям
+
+    loop {
+        let bytes_read = file.read(&mut buffer)?;
+        if bytes_read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..bytes_read]);
+    }
+
+    Ok(format!("{:x}", hasher.finalize()))
+}
 
 
 
-pub fn sftp_download(host_port: &str, user: &str, password: &str, src: &str, cp_full_path: &str, my_uuid: &Uuid, spanid: &str){
+pub fn sftp_download(host_port: &str, user: &str, password: &str, src: &str, dst: &str, my_uuid: &Uuid, spanid: &str){
     info!("{}: trying to connect {} {}", &host_port, &my_uuid, &spanid);
    
     match TcpStream::connect(host_port){
@@ -40,12 +60,12 @@ pub fn sftp_download(host_port: &str, user: &str, password: &str, src: &str, cp_
                 info!("{}: download TTTSOF00.IMG {} {}", &host_port, &my_uuid, &spanid);
                 let mut stream_tts = sftp.open(Path::new(&(src.to_owned() + "/TTSCOF00.IMG"))).map_err(|_| error!("{}: download ERROR TTTSOF00.IMG {} {}", &host_port, &my_uuid, &spanid)).unwrap();
                         stream_tts.read_to_end(&mut contents_tts).unwrap();
-                let _ = std::fs::write(cp_full_path.to_owned() + "/TTSCOF00.IMG", &contents_tts);
+                let _ = std::fs::write(dst.to_owned() + "/TTSCOF00.IMG", &contents_tts);
 
                 let mut stream_ttc = sftp.open(Path::new(&(src.to_owned() + "/TTTCOF00.IMG"))).map_err(|_| error!("{}: download ERROR TTTCOF00.IMG {} {}", &host_port, &my_uuid, &spanid)).unwrap();
                 info!("{}: download TTTCOF00.IMG {} {}", &host_port, &my_uuid, &spanid);
                         stream_ttc.read_to_end(&mut contents_ttc).unwrap();
-                let _ = std::fs::write(cp_full_path.to_owned() + "/TTTCOF00.IMG", &contents_ttc);
+                let _ = std::fs::write(dst.to_owned() + "/TTTCOF00.IMG", &contents_ttc);
                 info!("{}: quit {} {}", &host_port, &my_uuid, &spanid); 
                 
 
@@ -58,7 +78,43 @@ pub fn sftp_download(host_port: &str, user: &str, password: &str, src: &str, cp_
     
     }
 
+// upload function
+pub fn sftp_upload(host_port: &str, user: &str, password: &str, src: &str, dst: &str, my_uuid: &Uuid, spanid: &str){
+    info!("{}: trying to connect {} {}", &host_port, &my_uuid, &spanid);
 
+match TcpStream::connect(host_port){
+ Ok(tcp) => {
+     info!("{}: connect succeful {} {}", &host_port, &my_uuid, &spanid);
+let mut sess = Session::new().unwrap();
+     sess.set_tcp_stream(tcp);
+     sess.set_compress(true);
+     sess.timeout();
+     sess.set_timeout(5000);
+     sess.handshake().unwrap();
+     
+match sess.userauth_password(user, password){
+         Ok(()) => info!("{}: auth OK from user: {} {} {}",&host_port, &user, &my_uuid, &spanid),
+         Err(e) => error!("{}: connect error by sftp protocol description: {} {} {}", &host_port, e, &my_uuid, &spanid)
+     };
+
+
+let sftp = sess.sftp().unwrap();
+let mut local_file = File::open(&src).expect("no file TTC found");  
+let mut buffer:Vec<u8> = Vec::new();
+let _ :u64 = local_file.read_to_end(&mut buffer).unwrap().try_into().unwrap();
+
+sftp.create(&Path::new(&dst)).unwrap().write_all(&buffer).unwrap();
+info!("{}: upload back TTTCOF00.IMG {} {}", &host_port, &my_uuid, &spanid);
+
+},
+Err(e) => {
+ error!("{}: connect error by sftp protocol description: {} {} {}", &host_port, e, &my_uuid, &spanid);
+ std::process::exit(1);
+}
+}
+}
+
+// download function 
 pub fn ftp_download(host_port: &str, user: &str, password: &str, src: &str, cp_full_path: &str, my_uuid: &Uuid, spanid: &String){
         info!("{}: trying to connect {} {}", &host_port, &my_uuid, &spanid);
     let ftp_timeout = Duration::seconds(5).to_std().unwrap();
@@ -128,7 +184,7 @@ fn to_binary(c: char) -> &'static str {
 }
 
 
-//рабочая функция
+//основная рабочая функция
 pub fn read_as_bin2hex(ip: &str, handle: &mut impl Read, handle_tts: &mut impl Read, _fpath: &String, num_edit_str: &String, sentry_event_id: &Uuid, spanid: &String) -> Result<()> {
 
     let num_edit: i16 = num_edit_str.parse().expect("Block number not integer!");
