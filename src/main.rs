@@ -1,15 +1,17 @@
 //build command: 
-//example run: cargo run -- print sftp 127.0.0.1 22 'USER' 'PASS' /path/path-000 -1
-//example run: cargo run -- print sftp localhost 22 'USER' 'PASS' /path/to/example/ -1
-//nsn print sftp 127.0.0.1 22 'USER' 'PASS' /path/path-000 -1
+//example run: cargo run -- print sftp localhost 22 'user' 'pass' /home/user/Rust/nsn/example/ -1
+//nsn print sftp 127.0.0.1 22 'user' 'pass' /path -1
 
 use std::env;
 use std::fs;
-use log::info;
+use std::path::Path;
+use log::{info, error};
 use log4rs;
 use nsn::ftp_download;
 use nsn::sftp_download;
+use nsn::sftp_upload;
 use nsn::read_as_bin2hex;
+use nsn::calculate_md5;
 use uuid::Uuid;
 use whoami::fallible;
 
@@ -18,7 +20,7 @@ fn main() {
 
     let hostname = fallible::hostname().unwrap();
 
-    let _guard = sentry::init(("https://url.ru/1596", 
+    let _guard = sentry::init(("https://url.ru/1223", 
     sentry::ClientOptions {
             release: sentry::release_name!(),
             traces_sample_rate: 0.2, //send 20% of transaction to sentry
@@ -28,7 +30,7 @@ fn main() {
         sentry::configure_scope(|scope| {
             scope.set_user(Some(sentry::User {
                 id: Some(hostname.clone()),
-                email: Some("dima@yandex.ru".to_owned()),
+                email: Some("kuzmin@mts.ru".to_owned()),
                 username: Some(whoami::username()),                
                 ..Default::default()
             }));
@@ -46,7 +48,7 @@ fn main() {
         std::process::exit(1);
     }
     );
-    let work_dir = String::from("/path/nsn");
+    let work_dir = String::from("/tmp/nsn");
     let full_path = work_dir.to_owned() + "/result/" + &_ip;
     let cp_full_path = full_path.clone();
 
@@ -129,8 +131,10 @@ fn main() {
     }
     span_ftp.finish();
 
+
     let _read_file = cp_full_path.to_owned() + "/TTTCOF00.IMG";
-    let _read_file_tts = cp_full_path.to_owned() + "/TTSCOF00.IMG";
+    let new_file_tts = cp_full_path.to_owned() + "/TTSCOF00.IMG";
+    let old_file_tts = cp_full_path.to_owned() + "/old_TTSCOF00.IMG";
     
     let span_read_ttc = transaction.start_child("read file", "TTTCOF00.IMG");
     info!("{}: read file {} {} {}",&ip_port, _read_file, &sentry_event_id, &span_read_ttc.get_span_id().to_string());
@@ -138,16 +142,54 @@ fn main() {
     span_read_ttc.finish();
 
     let span_read_tts = transaction.start_child("read file", "TTSCOF00.IMG");
-    info!("{}: read file {} {} {}",&ip_port, _read_file_tts, &sentry_event_id, &span_read_tts.get_span_id().to_string());
-    let mut file_s = std::fs::File::open(_read_file_tts).expect("Unable to open file");
-    span_read_tts.finish();
+    
+    //проверяем md5-сумму для нового и старого файла TTS
+    if !Path::new(&old_file_tts).exists(){
+        std::fs::File::create(old_file_tts.clone()).expect("create empty TTS file failed");
+        info!("{}: create new empty TTS file {}", &ip_port, &sentry_event_id);
+    }
+
+    match (calculate_md5(&new_file_tts), calculate_md5(&old_file_tts)) {
+        (Ok(hash1), Ok(hash2)) => {
+            info!("{}: md5 {} {} {}", &ip_port, hash1, new_file_tts, &sentry_event_id);
+            info!("{}: md5 {} {} {}", &ip_port, hash2, old_file_tts, &sentry_event_id);
+
+            if hash1 == hash2 {
+                info!("{}: new hash identical by old - exit {}", &ip_port, &sentry_event_id);
+                std::process::exit(0);
+            } else {
+                info!("{}: new hash not the same by old - working {}", &ip_port, &sentry_event_id);
+                fs::copy(new_file_tts.clone(), old_file_tts).unwrap();
+            }
+        }
+        (Err(e), _) => error!("{}: error check md5 for {}, description: {}", &ip_port, new_file_tts, e),
+        (_, Err(e)) => error!("{}: error check md5 for {}, description: {}", &ip_port, old_file_tts, e),
+    }
+
+    info!("{}: read file {} {} {}",&ip_port, new_file_tts, &sentry_event_id, &span_read_tts.get_span_id().to_string());
+    let mut file_s = std::fs::File::open(new_file_tts).expect("Unable to open file");
+            span_read_tts.finish();
 
     let span_result = transaction.start_child("result", "execute read_as_bin2hex");
     let spanid_result = &span_result.get_span_id().to_string();
     let _result = read_as_bin2hex(&ip_port, &mut file, &mut file_s, &cp_full_path, &_edit_block, &sentry_event_id, &spanid_result);
-    span_result.finish();
+        span_result.finish();
+
+    //загружаем обратно измененный TTC-файл с новым временем для скачанного файла CF*
+    let span_ftp_upload = transaction.start_child("start upload TTC-file ftp/sftp", &ip_port);
+    
+    let new_file_ttc = cp_full_path.to_owned() + "/new_TTTCOF00.IMG";
+    let back_file_ttc = _srcdir.to_owned() + "/Return/TTTCOF00.IMG";
+
+           sftp_upload(&ip_port, &_user, &_pass, &new_file_ttc, &back_file_ttc, &sentry_event_id, &span_ftp_upload.get_span_id().to_string());
+
+       span_ftp_upload.finish();
+    
+
     info!("{}: end of work {}",&ip_port, &sentry_event_id);
     transaction.finish();
+
+
 }
 
 
