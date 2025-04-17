@@ -390,7 +390,7 @@ pub fn read_as_bin2hex(ip: &str, handle: &mut impl Read, handle_tts: &mut impl R
     let json_data: serde_json::Value = serde_json::from_str(&out_string).expect("Can't parse json");
 
      //соединение с базой статистики
-    let client = Client::connect("postgresql://nsnuser:At5#lOq5wADvlh8t@11.60.4.230:5432/nsnlog", NoTls); 
+    let client = Client::connect("postgresql://user:pass@host:5432/db", NoTls); 
 
     match client {
         Ok(mut client) => {
